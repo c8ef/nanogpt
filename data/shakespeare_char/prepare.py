@@ -7,39 +7,39 @@ encoder and decoder and some other related info.
 
 import os
 import pickle
-import requests
+from pathlib import Path
+
 import numpy as np
+import requests
 
 # download the tiny shakespeare dataset
 input_file_path = os.path.join(os.path.dirname(__file__), "input.txt")
 if not os.path.exists(input_file_path):
     data_url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
-    with open(input_file_path, "w") as f:
-        f.write(requests.get(data_url).text)
+    Path(input_file_path).write_text(requests.get(data_url).text)
 
-with open(input_file_path, "r") as f:
-    data = f.read()
+data = Path(input_file_path).read_text()
 print(f"length of dataset in characters: {len(data):,}")
 
 # get all the unique characters that occur in this  text
-chars = sorted(list(set(data)))
+chars = sorted(set(data))
 vocab_size = len(chars)
 print(f"all the unique characters: {''.join(chars)}")
 print(f"vocab size: {vocab_size:,}")
 
 # create a mapping from characters to integers
 stoi = {ch: i for i, ch in enumerate(chars)}
-itos = {i: ch for i, ch in enumerate(chars)}
+itos = dict(enumerate(chars))
 
 
 # encoder: take a string, output a list of integers
-def encode(s):
-    return [stoi[c] for c in s]
+def encode(string):
+    return [stoi[c] for c in string]
 
 
 # decoder: take a list of integers, output a string
-def decode(l):
-    return "".join([itos[i] for i in l])
+def decode(indices):
+    return "".join([itos[i] for i in indices])
 
 
 # create the train and test splits
