@@ -16,9 +16,9 @@ import requests
 input_file_path = os.path.join(os.path.dirname(__file__), "input.txt")
 if not os.path.exists(input_file_path):
     data_url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
-    Path(input_file_path).write_text(requests.get(data_url).text)
+    Path(input_file_path).write_text(requests.get(data_url).text, "utf-8")
 
-data = Path(input_file_path).read_text()
+data = Path(input_file_path).read_text("utf-8")
 print(f"length of dataset in characters: {len(data):,}")
 
 # get all the unique characters that occur in this  text

@@ -9,6 +9,7 @@ The code in this file will be run as follows from e.g. train.py:
 
 import sys
 from ast import literal_eval
+from pathlib import Path
 
 for arg in sys.argv[1:]:
     if "=" not in arg:
@@ -16,9 +17,9 @@ for arg in sys.argv[1:]:
         assert not arg.startswith("--")
         config_file = arg
         print(f"Overriding config with {config_file}")
-        with open(config_file) as f:
-            print(f.read())
-        exec(open(config_file).read())
+        config_file_content = Path(config_file).read_text()
+        print(config_file_content)
+        exec(config_file_content)
     else:
         # assume it's a --key=value argument
         assert arg.startswith("--")
