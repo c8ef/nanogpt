@@ -15,7 +15,7 @@ if version.parse(datasets.__version__) >= version.parse("4"):
     )
 
 
-num_proc = os.cpu_count() / 2
+num_proc = int(os.cpu_count() / 2)
 enc = tiktoken.get_encoding("gpt2")
 
 dataset = load_dataset("openwebtext", num_proc=num_proc)
