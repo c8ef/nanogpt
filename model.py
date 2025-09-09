@@ -5,10 +5,13 @@ References:
 2) https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py
 """
 
+import math
 from dataclasses import dataclass
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from transformers import GPT2LMHeadModel
 
 
 @dataclass
@@ -86,3 +89,157 @@ class Block(nn.Module):
         x = x + self.attn(self.ln_1(x))
         x = x + self.mlp(self.ln_2(x))
         return x
+
+
+class GPT(nn.Module):
+    def __init__(self, config: GPTConfig):
+        super().__init__()
+        assert config.vocab_size is not None
+        assert config.block_size is not None
+        self.config = config
+
+        self.transformer = nn.ModuleList({
+            "wte": nn.Embedding(config.vocab_size, config.n_embd),
+            "wpe": nn.Embedding(config.block_size, config.n_embd),
+            "drop": nn.Dropout(config.dropout),
+            "h": nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+            "ln_f": nn.LayerNorm(config.n_embd, bias=config.bias),
+        })
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        # LM Head Weight Tying
+        self.transformer.wte.weight = self.lm_head.weight
+
+        # init all weights
+        self.apply(self._init_weights)
+        # GPT-2 paper, section 2.3
+        for pn, p in self.named_parameters():
+            if pn.endswith("c_proj.weight"):
+                nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
+
+        print(f"number of parameters: {self.get_num_params():.2f}")
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+    def get_num_params(self, non_embedding=True):
+        n_params = sum(p.numel() for p in self.parameters())
+        if non_embedding:
+            n_params -= self.transformer.wpe.weight.numel()
+        return n_params
+
+    def forward(self, idx, targets=None):
+        device = idx.device
+        _, t = idx.size()
+        assert t <= self.config.block_size, (
+            f"Cannot forward sequence of length {t}, "
+            f"block size is only {self.config.block_size}"
+        )
+        pos = torch.arange(0, t, dtype=torch.long, device=device)
+
+        # (b, t, n_embd)
+        tok_emb = self.transformer.wte(idx)
+        # (t, n_embd)
+        pos_emb = self.transformer.wpe(pos)
+        x = self.transformer.drop(tok_emb + pos_emb)
+        for block in self.transformer.h:
+            x = block(x)
+        x = self.transformer.ln_f(x)
+
+        if targets is not None:
+            logits = self.lm_head(x)
+            loss = F.cross_entropy(
+                logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1
+            )
+        else:
+            logits = self.lm_head(x[:, [-1], :])
+            loss = None
+
+        return logits, loss
+
+    @classmethod
+    def from_pretrained(cls, model_type, override_args=None):
+        assert model_type in {"gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl"}
+        override_args = override_args or {}
+        # only dropout can be overridden
+        assert all(k == "dropout" for k in override_args)
+        print(f"loading weights from pretrained gpt: {model_type}")
+
+        # create a GPT model
+        config_args = {
+            "gpt2": {"n_layer": 12, "n_head": 12, "n_embd": 768},
+            "gpt2-medium": {"n_layer": 24, "n_head": 16, "n_embd": 1024},
+            "gpt2-large": {"n_layer": 36, "n_head": 20, "n_embd": 1280},
+            "gpt2-xl": {"n_layer": 48, "n_head": 25, "n_embd": 1600},
+        }[model_type]
+        print("forcing vocab_size=50257, block_size=1024, bias=True")
+        config_args["vocab_size"] = 50257
+        config_args["block_size"] = 1024
+        config_args["bias"] = True
+        if "dropout" in override_args:
+            print(f"overriding dropout rate to {override_args['dropout']}")
+            config_args["dropout"] = override_args["dropout"]
+        config = GPTConfig(**config_args)
+        model = GPT(config)
+        sd = model.state_dict()
+        sd_keys = sd.keys()
+        sd_keys = [k for k in sd_keys if not k.endswith(".attn.bias")]
+
+        # create a transformers model
+        model_hf = GPT2LMHeadModel.from_pretrained(model_type)
+        sd_hf = model_hf.state_dict()
+        sd_keys_hf = sd_hf.keys()
+        # ignore bias mask
+        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith(".attn.masked_bias")]
+        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith(".attn.bias")]
+        # Conv1D vs Linear
+        transposed = [
+            "attn.c_attn.weight",
+            "attn.c_proj.weight",
+            "mlp.c_fc.weight",
+            "mlp.c_proj.weight",
+        ]
+
+        assert len(sd_keys_hf) == len(sd_keys), (
+            f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
+        )
+        for k in sd_keys_hf:
+            if any(k.endswith(w) for w in transposed):
+                assert sd_hf[k].shape[::-1] == sd[k].shape
+                with torch.no_grad():
+                    sd[k].copy_(sd_hf[k].t())
+            else:
+                assert sd_hf[k].shape == sd[k].shape
+                with torch.no_grad():
+                    sd[k].copy_(sd_hf[k])
+
+        return model
+
+    @torch.no_grad()
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
+        for _ in range(max_new_tokens):
+            # crop sequence at block_size
+            idx_cond = (
+                idx
+                if idx.size(1) <= self.config.block_size
+                else idx[:, -self.config.block_size :]
+            )
+            # forward the model to get the logits
+            logits, _ = self(idx_cond)
+            # scale at desired temperature
+            logits = logits[:, -1, :] / temperature
+            # crop data to only the top K options
+            if top_k is not None:
+                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits[logits < v[:, [-1]]] = -float("Inf")
+            # convert logits to probs
+            probs = F.softmax(logits, dim=-1)
+            # sample from distributions
+            idx_next = torch.multinomial(probs, num_samples=1)
+            # append sampled index to the running sequence
+            idx = torch.cat((idx, idx_next), dim=1)
+        return idx
