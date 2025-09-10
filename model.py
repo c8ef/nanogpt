@@ -187,7 +187,6 @@ class GPT(nn.Module):
         model = GPT(config)
         sd = model.state_dict()
         sd_keys = sd.keys()
-        sd_keys = [k for k in sd_keys if not k.endswith(".attn.bias")]
 
         # create a transformers model
         model_hf = GPT2LMHeadModel.from_pretrained(model_type)
