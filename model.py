@@ -242,3 +242,10 @@ class GPT(nn.Module):
             # append sampled index to the running sequence
             idx = torch.cat((idx, idx_next), dim=1)
         return idx
+
+    def crop_block_size(self, block_size):
+        assert block_size <= self.config.block_size
+        self.config.block_size = block_size
+        self.transformer.wpe.weight = nn.Parameter(
+            self.transformer.wpe.weight[:block_size]
+        )
