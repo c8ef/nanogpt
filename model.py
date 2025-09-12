@@ -1,6 +1,6 @@
 """
 Full definition of a GPT Language Model.
-References:
+refs:
 1) https://github.com/openai/gpt-2/blob/master/src/model.py
 2) https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py
 """
