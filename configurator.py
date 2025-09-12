@@ -4,7 +4,8 @@ $ python train.py config/override_file.py --batch_size=32
 this will first run config/override_file.py, then override batch_size to 32
 
 The code in this file will be run as follows from e.g. train.py:
->>> exec(open("configurator.py").read())
+>>> from pathlib import Path
+>>> exec(Path("configurator.py").read_text())
 """
 
 import sys
