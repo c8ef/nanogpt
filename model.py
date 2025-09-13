@@ -57,7 +57,7 @@ class CausalSelfAttention(nn.Module):
             dropout_p=self.dropout if self.training else 0,
             is_causal=True,
         )
-
+        y = y.transpose(1, 2).contiguous().view(B, T, C)
         y = self.resid_dropout(self.c_proj(y))
         return y
 
@@ -99,7 +99,7 @@ class GPT(nn.Module):
         assert config.block_size is not None
         self.config = config
 
-        self.transformer = nn.ModuleList({
+        self.transformer = nn.ModuleDict({
             "wte": nn.Embedding(config.vocab_size, config.n_embd),
             "wpe": nn.Embedding(config.block_size, config.n_embd),
             "drop": nn.Dropout(config.dropout),
