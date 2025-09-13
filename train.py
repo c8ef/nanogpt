@@ -101,7 +101,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 device_type = "cuda" if "cuda" in device else "cpu"
 # note: float16 data type will automatically use a GradScaler
-ptdtype = {"bfloat16": torch.bfloat16, "float16": torch.float16}
+ptdtype = {"bfloat16": torch.bfloat16, "float16": torch.float16}[dtype]
 ctx = (
     nullcontext()
     if device_type == "cpu"
