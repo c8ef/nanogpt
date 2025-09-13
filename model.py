@@ -99,7 +99,7 @@ class GPT(nn.Module):
         assert config.block_size is not None
         self.config = config
 
-        self.transformer = nn.ModuleList({
+        self.transformer = nn.ModuleDict({
             "wte": nn.Embedding(config.vocab_size, config.n_embd),
             "wpe": nn.Embedding(config.block_size, config.n_embd),
             "drop": nn.Dropout(config.dropout),
