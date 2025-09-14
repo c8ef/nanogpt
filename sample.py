@@ -100,6 +100,7 @@ else:
 if start.startswith("FILE:"):
     start = Path(start[5:]).read_text("utf-8")
 start_ids = encode(start)
+# [None, ...] add the batch_size dimension
 x = torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...]
 
 # run generation
