@@ -20,7 +20,7 @@ $ python train.py config/eval_gpt2_xl.py
 
 | model       | params | train loss | val loss |
 | ----------- | ------ | ---------- | -------- |
-| gpt2        | 117M   |            |          |
-| gpt2-medium | 345M   |            |          |
-| gpt2-large  | 762M   |            |          |
-| gpt2-xl     | 1542M  |            |          |
+| gpt2        | 124M   | 3.12       | 3.11     |
+| gpt2-medium | 354M   | 2.83       | 2.83     |
+| gpt2-large  | 773M   | 2.67       | 2.67     |
+| gpt2-xl     | 1556M  | 2.56       | 2.56     |
