@@ -24,3 +24,16 @@ $ python train.py config/eval_gpt2_xl.py
 | gpt2-medium | 354M   | 2.83       | 2.83     |
 | gpt2-large  | 773M   | 2.67       | 2.67     |
 | gpt2-xl     | 1556M  | 2.56       | 2.56     |
+
+## fine-tuning
+
+```bash
+python train.py config/finetune_shakespeare.py
+python sample.py --out_dir=out-shakespeare
+```
+
+## sampling / inference
+
+```bash
+python sample.py --init_from=gpt2-xl --start="What is the answer to life?" --num_samples=5 --max_new_tokens=100
+```
