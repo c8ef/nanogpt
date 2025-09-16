@@ -1,21 +1,27 @@
 # nanogpt
 
-## training
+## quick start
 
 ```bash
-# using shakespeare text
+python data/shakespeare_char/prepare.py
 python train.py config/train_shakespeare_char.py
-# using OpenWebText
+python sample.py --out_dir=out-shakespeare-char
+```
+
+## reproducing GPT-2
+
+```bash
+python data/openwebtext/prepare.py
 torchrun --standalone --nproc_per_node=8 train.py config/train_gpt2.py
 ```
 
 ## baselines
 
 ```bash
-$ python train.py config/eval_gpt2.py
-$ python train.py config/eval_gpt2_medium.py
-$ python train.py config/eval_gpt2_large.py
-$ python train.py config/eval_gpt2_xl.py
+python train.py config/eval_gpt2.py
+python train.py config/eval_gpt2_medium.py
+python train.py config/eval_gpt2_large.py
+python train.py config/eval_gpt2_xl.py
 ```
 
 | model       | params | train loss | val loss |
@@ -28,6 +34,7 @@ $ python train.py config/eval_gpt2_xl.py
 ## fine-tuning
 
 ```bash
+python data/shakespeare/prepare.py
 python train.py config/finetune_shakespeare.py
 python sample.py --out_dir=out-shakespeare
 ```
