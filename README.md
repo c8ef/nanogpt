@@ -44,3 +44,7 @@ python sample.py --out_dir=out-shakespeare
 ```bash
 python sample.py --init_from=gpt2-xl --start="What is the answer to life?" --num_samples=5 --max_new_tokens=100
 ```
+
+## ref
+
+- https://github.com/karpathy/nanoGPT
